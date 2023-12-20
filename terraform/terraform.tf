@@ -1,7 +1,7 @@
-variable "project" {default = "esd-general-dev"}
+variable "project" {default = "laod001-appdev-nolio01"}
 variable "region" {default = "us-west1"}
-variable "subnetwork" {default = "test-network-sub"}
-variable "image" {default = "ubuntu-1604-xenial-v20190212"}
+variable "subnetwork" {default = "appdev-nolio01-usw1"}
+variable "image" {default = "debian-11-bullseye-v20230629"}
 variable "gc_credentials" {}
 variable "infrastructure_name" {default = "demo-infrastructure"}
 variable "jiraIssueId" {default = "no Jira Id"}
