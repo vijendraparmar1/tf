@@ -1,77 +1,74 @@
-/**
- * Copyright 2023 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+variable "project" {default = "esd-general-dev"}
+variable "region" {default = "us-west1"}
+variable "subnetwork" {default = "test-network-sub"}
+variable "image" {default = "ubuntu-1604-xenial-v20190212"}
+variable "gc_credentials" {}
+variable "infrastructure_name" {default = "demo-infrastructure"}
+variable "jiraIssueId" {default = "no Jira Id"}
+variable "zone" {default = "us-west1-b"}
 
-# [START compute_basic_vm_parent_tag]
-# [START compute_instances_create]
+variable "num_nodes" {
+  description = "Number of nodes to create"
+  default     = 1
+}
 
-# Create a VM instance from a public image
-# in the `default` VPC network and subnet
+locals {
+	id = "${random_integer.name_extension.result}"
+}
+
+resource "random_integer" "name_extension" {
+  min     = 1
+  max     = 99999
+}
+
+provider "google" {
+  credentials = "${var.gc_credentials}"
+  project     = "${var.project}"
+  region      = "${var.region}"
+}
 
 resource "google_compute_instance" "default" {
-  name         = "my-vm"
-  machine_type = "n1-standard-1"
-  zone         = "us-central1-a"
-
+  count        = "${var.num_nodes}"
+  project      = "${var.project}"
+  zone         = "${var.zone}"
+  name         = "${var.infrastructure_name}-${count.index + 1}-${local.id}"
+  machine_type = "f1-micro"
+  
   boot_disk {
     initialize_params {
-      image = "ubuntu-minimal-2210-kinetic-amd64-v20230126"
+      image = "${var.image}"
     }
   }
-
+  
   network_interface {
-    network = "default"
-    access_config {}
+    subnetwork = "${var.subnetwork}"
+    subnetwork_project = "${var.project}"
   }
 }
-# [END compute_instances_create]
 
-# [START vpc_compute_basic_vm_custom_vpc_network]
-resource "google_compute_network" "custom" {
-  name                    = "my-network"
-  auto_create_subnetworks = false
+output "name_output" {
+	description = "Instance name"
+	value       = "${google_compute_instance.default.*.name[0]}"
 }
-# [END vpc_compute_basic_vm_custom_vpc_network]
 
-# [START vpc_compute_basic_vm_custom_vpc_subnet]
-resource "google_compute_subnetwork" "custom" {
-  name          = "my-subnet"
-  ip_cidr_range = "10.0.1.0/24"
-  region        = "europe-west1"
-  network       = google_compute_network.custom.id
+output "project_output" {
+	description = "Project name"
+	value       = "${google_compute_instance.default.*.project[0]}"
 }
-# [END vpc_compute_basic_vm_custom_vpc_subnet]
 
-# [START compute_instances_create_with_subnet]
-
-# Create a VM in a custom VPC network and subnet
-
-resource "google_compute_instance" "custom_subnet" {
-  name         = "my-vm-instance"
-  tags         = ["allow-ssh"]
-  zone         = "europe-west1-b"
-  machine_type = "e2-small"
-  network_interface {
-    network    = google_compute_network.custom.id
-    subnetwork = google_compute_subnetwork.custom.id
-  }
-  boot_disk {
-    initialize_params {
-      image = "debian-cloud/debian-10"
-    }
-  }
+output "internal_ip_output" {
+	description = "Internal IP"
+	value       = "${google_compute_instance.default.*.network_interface.0.network_ip}"
 }
-# [END compute_instances_create_with_subnet]
-# [END compute_basic_vm_parent_tag]
+/*
+provider "jira" {
+  //url = "http://localhost:8100"       # Can also be set using the JIRA_URL environment variable
+  //user = "Jenya"                      # Can also be set using the JIRA_USER environment variable
+  //password = "${var.jiraPassword}"    # Can also be set using the JIRA_PASSWORD environment variable
+}
+
+resource "jira_comment" "example_comment" {
+  body = "Infrastructure Name: ${google_compute_instance.default.*.name[0]} \r\n Project Name: ${google_compute_instance.default.*.project[0]} \r\n Internal IP: ${google_compute_instance.default.*.network_interface.0.network_ip[0]}"
+  issue_key = "${var.jiraIssueId}"
+}
+*/
